@@ -1,0 +1,19 @@
+{% load humanize %}
+<html>
+    <body>
+        <table>
+            <tr>
+                <td>Word</td>
+                <td>Frequency</td>
+                <td>Rating</td>
+            </tr>
+            {% for word in words %}
+            <tr>
+                <td>{{word.word}}</td>
+                <td>{{word.frequency|intcomma}}</td>
+                <td>{{word.avg_rating|intcomma|floatformat:2}}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </body>
+</html>

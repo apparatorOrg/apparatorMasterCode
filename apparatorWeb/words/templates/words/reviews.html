@@ -1,0 +1,16 @@
+<html>
+<body>
+<ul>
+
+{% for review in reviews %}
+    <li>{{review}} -
+        <ul>
+        {% for word in review.words %}
+            <li>{{word}}</li>
+        {% endfor %}
+        </ul>
+    </li>
+{% endfor %}
+</ul>
+</body>
+</html>
