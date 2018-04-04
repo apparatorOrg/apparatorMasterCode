@@ -18,7 +18,7 @@ def index(request):
     # context = {'reviews': reviews}
     # return render(request, 'words/reviews.html', context)
 
-    words = Word.words.get_word_stats('2017-09-30', '2018-10-01', 1, 10)
+    words = Word.words.get_word_stats('2017-09-30', '2018-10-01', 1, 100)
     context = {'words': words}
 
     word_stats = {}
@@ -50,6 +50,7 @@ def test(request):
             content = json_response['feed']['entry'][review]['content']['label']
             author = json_response['feed']['entry'][review]['author']['name']['label']
             version = json_response['feed']['entry'][review]['im:version']['label']
+            # last_update = json_response['feed']['entry'][review]['updated']['label']
 
             reviews.append({
                 'id': app_store_review_id,
@@ -58,10 +59,26 @@ def test(request):
                 'content': content,
                 'author': author,
                 'version': version,
+                # 'last_update': last_update,
             })
 
     return HttpResponse(reviews)
     """
+    context = {'test': Review.reviews.pop_words_ef()}
+    return render(request, 'words/test.html', context)
 
+    #return HttpResponse(Review.reviews.pop_words_ef())
+
+    #from app store
+    test = Review.reviews.get_reviews_from_apple_app_store()
+    return HttpResponse(test)
+
+    #from iTunes
     test = Review.reviews.get_reviews_from_iTunesConnect(app_id='510855668',username='dbenami@amazon.com', password='ucdsyzA9')
     return HttpResponse(test)
+
+
+
+
+    byweek = Word.words.get_word_stats_by_week('2017-09-30', '2018-10-01', 1, 1000)
+    return HttpResponse(byweek)
