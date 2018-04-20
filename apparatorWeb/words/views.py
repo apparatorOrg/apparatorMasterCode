@@ -18,7 +18,7 @@ def index(request):
     # context = {'reviews': reviews}
     # return render(request, 'words/reviews.html', context)
 
-    words = Word.words.get_word_stats('2017-09-30', '2018-10-01', 1, 100)
+    words = Word.words.get_word_stats('2017-09-30', '2018-10-01', 1, 1000)
     context = {'words': words}
 
     word_stats = {}
@@ -64,6 +64,15 @@ def test(request):
 
     return HttpResponse(reviews)
     """
+
+    test = Review.reviews.get_reviews_from_apple_app_store()
+    pop = Review.reviews.pop_words_ef()
+    return HttpResponse(test)
+
+    context = {'test': Review.reviews.get_reviews_words()}
+    return render(request, 'words/test.html', context)
+
+
     context = {'test': Review.reviews.pop_words_ef()}
     return render(request, 'words/test.html', context)
 

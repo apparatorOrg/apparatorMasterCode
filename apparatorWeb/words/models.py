@@ -3,8 +3,9 @@ from __future__ import unicode_literals, division
 from django.utils.encoding import python_2_unicode_compatible
 from django.db import models, connection
 import nltk
-from nltk.corpus import names, stopwords
+from nltk.corpus import names, stopwords, wordnet
 from nltk import word_tokenize, FreqDist, RegexpTokenizer
+from nltk.stem import WordNetLemmatizer
 from django.db.models import Avg, Sum, Prefetch, Count
 import datetime, json, urllib, urllib2, requests
 import xml.etree.cElementTree as ET
@@ -12,6 +13,21 @@ from django.db.models.functions import Lower, Extract, ExtractWeek
 from django.conf import settings
 from functools import reduce
 # from django.db.models.expressions import RawSQL
+
+def get_wordnet_pos(treebank_tag):
+    """
+    converts wordnet tag to lemmatizer param. If unknown, default to noun.
+    """
+    if treebank_tag.startswith('J'):
+        return wordnet.ADJ
+    elif treebank_tag.startswith('V'):
+        return wordnet.VERB
+    elif treebank_tag.startswith('N'):
+        return wordnet.NOUN
+    elif treebank_tag.startswith('R'):
+        return wordnet.ADV
+    else:
+        return wordnet.NOUN
 
 #@python_2_unicode_compatible
 class WordQuerySet(models.QuerySet):
@@ -137,6 +153,7 @@ class ReviewQuerySet(models.QuerySet):
         freq_dist = FreqDist(tokens)
         return freq_dist
 
+    # DEPRECATE:
     def get_reviews_words(self):
         #### The first two lines ignore UTF due to conversion errors #####
         #### This is required for SQLLITE and should be deprecated   #####
@@ -147,14 +164,19 @@ class ReviewQuerySet(models.QuerySet):
         # returns a dictionary with key review id and value list of words
 
         words = {}  # should be a dictionary with 1) review id 2) list of words
-        reviews = self.all().order_by('-last_modified')[:100] # TODO: REMOVE LIMIT AND FILTER TO NON PREVIOUSLY POPULATED ONLY
+        reviews = self.all().order_by('-last_modified')[:1000] # TODO: REMOVE LIMIT AND FILTER TO NON PREVIOUSLY POPULATED ONLY
         # tokenize while removing punctuations and stop words - this should be stored in the db as it's the slow part
         for review in reviews:
             tokens = []
+            lemmatized_tokens = []
+            lemmatizer = WordNetLemmatizer()
             for token in RegexpTokenizer(r'\w+').tokenize(review.review):
-                if token.lower() not in stopwords.words('english'): #TODO: add all languages
+                if token.lower() not in set(stopwords.words('english')): #TODO: add all languages
                     tokens.append(token.lower())
-                words[review.id] = tokens
+            pos_tags = nltk.pos_tag(tokens)
+            for tag in pos_tags:
+                lemmatized_tokens.append(lemmatizer.lemmatize(tag[0].lower(), pos=get_wordnet_pos(tag[1])))
+            words[review.id] = lemmatized_tokens
         return words
 
     def get_new_reviews_words(self):
@@ -165,16 +187,24 @@ class ReviewQuerySet(models.QuerySet):
         #### end of part to ignore ####
 
         # returns a dictionary with key review id and value list of words
+        """
 
+        :return: tokenized words
+        """
         words = {}  # should be a dictionary with 1) review id 2) list of words
-        reviews = self.filter(words_analyzed=False).order_by('-last_modified')[:20] # TODO: REMOVE LIMIT AND FILTER TO NON PREVIOUSLY POPULATED ONLY
+        reviews = self.filter(words_analyzed=False).order_by('-last_modified')
         # tokenize while removing punctuations and stop words - this should be stored in the db as it's the slow part
         for review in reviews:
             tokens = []
+            lemmatized_tokens = []
+            lemmatizer = WordNetLemmatizer()
             for token in RegexpTokenizer(r'\w+').tokenize(review.review):
-                if token.lower() not in stopwords.words('english'): #TODO: add all languages
+                if token.lower() not in set(stopwords.words('english')): #TODO: add all languages
                     tokens.append(token.lower())
-                words[review.id] = tokens
+            pos_tags = nltk.pos_tag(tokens)
+            for tag in pos_tags:
+                lemmatized_tokens.append(lemmatizer.lemmatize(tag[0].lower(), pos=get_wordnet_pos(tag[1])))
+            words[review.id] = lemmatized_tokens
         return words
 
     def pop_words_ef(self):
@@ -261,6 +291,8 @@ class ReviewQuerySet(models.QuerySet):
                 "New existing word relationships": len(rels_created),
                 "New words' relationships": len(new_word_rels_created)}
 
+    """
+    DEPRECATE
     def populate_review_words(self, reviews_words):
         # TODO: Refactor code to store get lists first and run fewer queries (instead of 2 queries per word)
         # TODO: Refactor code to store update and insert queries (instead of running a query for each word)
@@ -305,6 +337,7 @@ class ReviewQuerySet(models.QuerySet):
                     word_review_relationship.save()
 
         return True
+    """
 
     def get_reviews_from_apple_app_store(self, app_id='510855668', country_code='us'):
         """
